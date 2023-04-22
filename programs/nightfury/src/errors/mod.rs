@@ -6,4 +6,7 @@ pub enum NightFuryError {
     InvalidAuthority,
     #[msg("Invalid NightFury Mint")]
     InvalidMint,
+    #[msg("Uri too long")]
+    UriTooLong,
+    FailedToBuildUpdateInstruction,
 }

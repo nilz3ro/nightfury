@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 
-use crate::state::NightFuryState;
+use crate::state::NightFury;
 
 #[derive(Accounts)]
 pub struct UpdateNightUri<'info> {
-    pub nightfury: Account<'info, NightFuryState>,
+    pub nightfury: Account<'info, NightFury>,
     pub authority: Signer<'info>,
 }
 
