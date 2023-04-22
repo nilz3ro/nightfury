@@ -14,7 +14,13 @@ pub struct Initialize<'info> {
     #[account(
         init,
         space = NightFury::LENGTH,
-        payer = authority
+        payer = authority,
+        seeds = [
+            b"nightfury".as_ref(),
+            mint.key().as_ref(),
+            authority.key().as_ref()
+        ],
+        bump
     )]
     pub nightfury: Account<'info, NightFury>,
     pub mint: Account<'info, Mint>,
