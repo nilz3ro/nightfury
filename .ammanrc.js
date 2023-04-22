@@ -32,6 +32,11 @@ const validator = {
             label: 'authorization_rules',
             accountId: 'auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg',
             executable: true
+        },
+        {
+            label: 'ruleset',
+            accountId: 'eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9',
+            executable: false
         }
     ]
 };

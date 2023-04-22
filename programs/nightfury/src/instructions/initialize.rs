@@ -36,6 +36,8 @@ pub fn process_initialize(
     day_uri: String,
     night_uri: String,
 ) -> Result<()> {
+    msg!("Initializing NightFury");
+
     assert_owned_by(&ctx.accounts.metadata, &mpl_token_metadata::id())?;
     let metadata = Metadata::from_account_info(&mut ctx.accounts.metadata)?;
 

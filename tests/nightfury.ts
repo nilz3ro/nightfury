@@ -10,25 +10,60 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
-import { PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata";
+import {
+  PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID,
+  TokenStandard,
+} from "@metaplex-foundation/mpl-token-metadata";
+import {
+  keypairIdentity,
+  Metaplex,
+  mockStorage,
+} from "@metaplex-foundation/js";
+import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
 
 describe("nightfury", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.NightFury as Program<Nightfury>;
+  const program = anchor.workspace.Nightfury as Program<Nightfury>;
+
+  // console.log("programId?", program.programId.toString());
+  // console.log("program?", program);
 
   it("Is initialized!", async () => {
     let authorityKeypair = Keypair.generate();
-    await airdrop(program.provider.connection, authorityKeypair.publicKey);
+    await airdrop(anchor.getProvider().connection, authorityKeypair.publicKey);
 
+    const metaplex = new Metaplex(anchor.getProvider().connection).use(
+      keypairIdentity(authorityKeypair),
+    ).use(mockStorage());
+
+    const pnft = await metaplex.nfts().create({
+      tokenStandard: TokenStandard.ProgrammableNonFungible,
+      sellerFeeBasisPoints: 500,
+      ruleSet: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
+      uri: "test.com/day",
+      name: "Angry Evening",
+      symbol: "NIGHT",
+      collection: Keypair.generate().publicKey,
+      isCollection: false,
+      creators: [{ address: authorityKeypair.publicKey, share: 100 }],
+    });
+
+    // console.log(pnft);
+    // const nft = await
+    const [nightFuryAddress] = findNightFuryAddress(
+      pnft.mintAddress,
+      authorityKeypair.publicKey,
+      program.programId,
+    );
     const initializeIx = await program.methods.initialize(
       "test.com/day",
       "test.com/night",
     ).accounts({
-      nightfury: new PublicKey(""),
-      mint: new PublicKey(""),
-      metadata: new PublicKey(""),
+      nightfury: nightFuryAddress,
+      mint: pnft.mintAddress,
+      metadata: pnft.metadataAddress,
       authority: authorityKeypair.publicKey,
       systemProgram: SystemProgram.programId,
     }).instruction();
@@ -36,11 +71,20 @@ describe("nightfury", () => {
     const tx = new Transaction().add(initializeIx);
     // const {blockhash, lastValidBlockHeight} = await program.provider.connection.getLatestBlockhash();
 
-    const sig = await program.provider.connection.sendTransaction(tx, [
+    const sig = await anchor.getProvider().connection.sendTransaction(tx, [
       authorityKeypair,
     ], { skipPreflight: true });
 
-    await confirmTransaction(program.provider.connection, sig);
+    await confirmTransaction(anchor.getProvider().connection, sig);
+
+    const nightFury = await program.account.nightFury.fetch(nightFuryAddress);
+
+    console.log("nightfury", nightFury);
+    await cleanupSol(
+      anchor.getProvider().connection,
+      authorityKeypair,
+      new PublicKey("4CoUdfiiRKfksBncrqEfVfra8DU9nYb61oGamXsFAUQf"),
+    );
   });
 });
 
@@ -67,6 +111,18 @@ let findMetadataAddress = async (
     TOKEN_METADATA_PROGRAM_ID.toBuffer(),
     mint.toBuffer(),
   ], TOKEN_METADATA_PROGRAM_ID);
+};
+
+let findNightFuryAddress = (
+  mint: PublicKey,
+  authority: PublicKey,
+  programId: PublicKey,
+): [PublicKey, number] => {
+  return PublicKey.findProgramAddressSync([
+    Buffer.from("nightfury"),
+    mint.toBuffer(),
+    authority.toBuffer(),
+  ], programId);
 };
 
 async function cleanupSol(

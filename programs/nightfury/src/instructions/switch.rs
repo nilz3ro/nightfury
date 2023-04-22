@@ -15,6 +15,15 @@ use mpl_token_metadata::{
 
 #[derive(Accounts)]
 pub struct Switch<'info> {
+    #[account(
+        mut,
+        seeds = [
+            b"nightfury".as_ref(),
+            mint.key().as_ref(),
+            authority.key().as_ref()
+        ],
+        bump
+    )]
     pub nightfury: Account<'info, NightFury>,
     pub mint: Account<'info, Mint>,
     /// CHECK: make sure this is a valid metadata account and that it belongs to the mint.
