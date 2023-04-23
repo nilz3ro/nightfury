@@ -1,8 +1,10 @@
 use crate::state::NightFury;
 use crate::{errors::NightFuryError, state::NightFuryState};
 
-use anchor_lang::{prelude::*, solana_program::program::invoke};
-use anchor_spl::token::Mint;
+use anchor_lang::{
+    prelude::*, solana_program::program::invoke, solana_program::sysvar::instructions,
+};
+use anchor_spl::token::{Mint, TokenAccount};
 
 use mpl_token_metadata::{
     instruction::{
@@ -25,14 +27,21 @@ pub struct Switch<'info> {
         bump
     )]
     pub nightfury: Account<'info, NightFury>,
+    // pub token: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
     /// CHECK: make sure this is a valid metadata account and that it belongs to the mint.
+    #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
     pub authority: Signer<'info>,
     /// CHECK: Make sure this is the real token metadata program.
     pub token_metadata_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+    /// CHECK: Manually check this against the sysvar instruction program id
+    pub instructions_sysvar: UncheckedAccount<'info>,
     /// CHECK: Make sure this is the real authorization rules program.
     pub authorization_rules_program: UncheckedAccount<'info>,
+    /// CHECK: Make sure this account belongs to the auth rules program
+    pub auth_rules: UncheckedAccount<'info>,
     // accounts for nft
 }
 
@@ -56,6 +65,10 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         mint.key() == metadata.mint.key(),
         NightFuryError::InvalidMint
     );
+    require!(
+        instructions::check_id(&ctx.accounts.instructions_sysvar.key()),
+        NightFuryError::InvalidInstructionsSysvarId
+    );
 
     let update_args = UpdateArgs::V1 {
         authorization_data: None,
@@ -76,6 +89,11 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
     };
 
     let update_instruction = UpdateBuilder::new()
+        .authority(ctx.accounts.authority.key())
+        .mint(ctx.accounts.mint.key())
+        .metadata(ctx.accounts.metadata.key())
+        .payer(ctx.accounts.authority.key())
+        .authorization_rules(ctx.accounts.auth_rules.key())
         .build(update_args)
         .map_err(|e| {
             msg!("{:?}", e);
@@ -83,13 +101,21 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         })?
         .instruction();
 
+    msg!("invoking update instruction");
     invoke(
         &update_instruction,
         &[
-            ctx.accounts.metadata.to_account_info(),
             ctx.accounts.authority.to_account_info(),
-            ctx.accounts.token_metadata_program.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.metadata.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.instructions_sysvar.to_account_info(),
             ctx.accounts.authorization_rules_program.to_account_info(),
+            ctx.accounts.auth_rules.to_account_info(),
         ],
     )?;
 

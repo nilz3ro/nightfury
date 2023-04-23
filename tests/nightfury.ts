@@ -8,6 +8,7 @@ import {
   PublicKey,
   Signer,
   SystemProgram,
+  SYSVAR_INSTRUCTIONS_PUBKEY,
   Transaction,
 } from "@solana/web3.js";
 import {
@@ -31,7 +32,18 @@ describe("nightfury", () => {
   // console.log("program?", program);
 
   it("Is initialized!", async () => {
-    let authorityKeypair = Keypair.generate();
+    const authorityKeypair = Keypair.fromSecretKey(Buffer.from(
+      JSON.parse(
+        require("fs").readFileSync("./nightfury-authority.json", "utf8"),
+      ),
+    ));
+
+    const balance = await anchor.getProvider().connection.getBalance(
+      authorityKeypair.publicKey,
+    );
+
+    // console.log("balance", balance);
+    // let authorityKeypair = Keypair.generate();
     await airdrop(anchor.getProvider().connection, authorityKeypair.publicKey);
 
     const metaplex = new Metaplex(anchor.getProvider().connection).use(
@@ -73,18 +85,57 @@ describe("nightfury", () => {
 
     const sig = await anchor.getProvider().connection.sendTransaction(tx, [
       authorityKeypair,
-    ], { skipPreflight: true });
+    ]);
 
     await confirmTransaction(anchor.getProvider().connection, sig);
 
     const nightFury = await program.account.nightFury.fetch(nightFuryAddress);
 
-    console.log("nightfury", nightFury);
-    await cleanupSol(
-      anchor.getProvider().connection,
-      authorityKeypair,
-      new PublicKey("4CoUdfiiRKfksBncrqEfVfra8DU9nYb61oGamXsFAUQf"),
-    );
+    console.log("nightfury before", nightFury);
+
+    try {
+      const switchIx = await program.methods.switch().accounts({
+        nightfury: nightFuryAddress,
+        mint: pnft.mintAddress,
+        metadata: pnft.metadataAddress,
+        authority: authorityKeypair.publicKey,
+        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        authorizationRulesProgram: mplAuth.PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+        authRules: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
+      }).instruction();
+
+      const switchTx = new Transaction().add(switchIx);
+
+      const switchSig = await anchor.getProvider().connection.sendTransaction(
+        switchTx,
+        [authorityKeypair],
+        { skipPreflight: true },
+      );
+
+      await confirmTransaction(anchor.getProvider().connection, switchSig);
+
+      const nightFuryAfter = await program.account.nightFury.fetch(
+        nightFuryAddress,
+      );
+
+      console.log("nightfury", nightFuryAfter);
+    } catch (e) {
+      console.log(e);
+    }
+
+    const metadataAfter = await metaplex.nfts().findByMint({
+      mintAddress: pnft.mintAddress,
+    });
+
+    console.log(metadataAfter);
+
+    // await cleanupSol(
+    //   anchor.getProvider().connection,
+    //   authorityKeypair,
+    //   new PublicKey("4CoUdfiiRKfksBncrqEfVfra8DU9nYb61oGamXsFAUQf"),
+    // );
   });
 });
 

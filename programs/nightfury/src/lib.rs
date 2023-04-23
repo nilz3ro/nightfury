@@ -16,7 +16,7 @@ pub mod nightfury {
         process_initialize(ctx, day_uri, night_uri)
     }
 
-    pub fn swtich(ctx: Context<Switch>) -> Result<()> {
+    pub fn switch(ctx: Context<Switch>) -> Result<()> {
         process_switch(ctx)
     }
 

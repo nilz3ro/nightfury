@@ -9,4 +9,6 @@ pub enum NightFuryError {
     #[msg("Uri too long")]
     UriTooLong,
     FailedToBuildUpdateInstruction,
+    #[msg("Invalid Instructions Sysvar Id")]
+    InvalidInstructionsSysvarId,
 }
