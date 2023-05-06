@@ -9,7 +9,8 @@ url = "https://api.apr.dev"
 
 [provider]
 cluster = "localnet"
-wallet = "/home/nilz3ro/.config/solana/id.json"
+wallet = "/home/nilz3ro/keez/n1z.json"
+# wallet = "/home/nilz3ro/.config/solana/id.json"
 # wallet = "./nightfury-authority.json"
 
 [scripts]

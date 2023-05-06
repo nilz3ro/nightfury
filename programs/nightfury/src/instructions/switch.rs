@@ -6,6 +6,7 @@ use anchor_lang::{
 };
 use anchor_spl::token::{Mint, TokenAccount};
 
+use clockwork_sdk::state::Thread;
 use mpl_token_metadata::{
     instruction::{
         builders::UpdateBuilder, CollectionDetailsToggle, CollectionToggle, InstructionBuilder,
@@ -22,7 +23,7 @@ pub struct Switch<'info> {
         seeds = [
             b"nightfury".as_ref(),
             mint.key().as_ref(),
-            authority.key().as_ref()
+            nightfury.authority.key().as_ref()
         ],
         bump
     )]
@@ -32,7 +33,10 @@ pub struct Switch<'info> {
     /// CHECK: make sure this is a valid metadata account and that it belongs to the mint.
     #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
-    pub authority: Signer<'info>,
+    // #[account(signer, constraint = thread.authority.eq(&nightfury.key()))]
+    /// CHECK: make sure it's a valid thread
+    pub thread: UncheckedAccount<'info>,
+    // pub thread: Account<'info, Thread>,
     /// CHECK: Make sure this is the real token metadata program.
     pub token_metadata_program: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
@@ -40,8 +44,8 @@ pub struct Switch<'info> {
     pub instructions_sysvar: UncheckedAccount<'info>,
     /// CHECK: Make sure this is the real authorization rules program.
     pub authorization_rules_program: UncheckedAccount<'info>,
-    /// CHECK: Make sure this account belongs to the auth rules program
-    pub auth_rules: UncheckedAccount<'info>,
+    // CHECK: Make sure this account belongs to the auth rules program
+    // pub auth_rules: UncheckedAccount<'info>,
     // accounts for nft
 }
 
@@ -89,11 +93,11 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
     };
 
     let update_instruction = UpdateBuilder::new()
-        .authority(ctx.accounts.authority.key())
+        .authority(ctx.accounts.thread.key())
         .mint(ctx.accounts.mint.key())
         .metadata(ctx.accounts.metadata.key())
-        .payer(ctx.accounts.authority.key())
-        .authorization_rules(ctx.accounts.auth_rules.key())
+        .payer(ctx.accounts.thread.key())
+        // .authorization_rules(ctx.accounts.auth_rules.key())
         .build(update_args)
         .map_err(|e| {
             msg!("{:?}", e);
@@ -105,17 +109,19 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
     invoke(
         &update_instruction,
         &[
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.thread.to_account_info(),
             ctx.accounts.system_program.to_account_info(),
             ctx.accounts.system_program.to_account_info(),
             ctx.accounts.mint.to_account_info(),
             ctx.accounts.metadata.to_account_info(),
             ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.thread.to_account_info(),
             ctx.accounts.system_program.to_account_info(),
             ctx.accounts.instructions_sysvar.to_account_info(),
-            ctx.accounts.authorization_rules_program.to_account_info(),
-            ctx.accounts.auth_rules.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+            // ctx.accounts.authorization_rules_program.to_account_info(),
+            // ctx.accounts.auth_rules.to_account_info(),
         ],
     )?;
 

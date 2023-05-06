@@ -21,6 +21,7 @@ import {
   mockStorage,
 } from "@metaplex-foundation/js";
 import * as mplAuth from "@metaplex-foundation/mpl-token-auth-rules";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 describe("nightfury", () => {
   // Configure the client to use the local cluster.
@@ -30,6 +31,7 @@ describe("nightfury", () => {
 
   // console.log("programId?", program.programId.toString());
   // console.log("program?", program);
+  console.log(TOKEN_PROGRAM_ID.toString());
 
   it("Is initialized!", async () => {
     const authorityKeypair = Keypair.fromSecretKey(Buffer.from(
@@ -42,33 +44,44 @@ describe("nightfury", () => {
       authorityKeypair.publicKey,
     );
 
-    // console.log("balance", balance);
+    console.log("balance", balance);
     // let authorityKeypair = Keypair.generate();
     await airdrop(anchor.getProvider().connection, authorityKeypair.publicKey);
 
+    console.log("building metaplex");
     const metaplex = new Metaplex(anchor.getProvider().connection).use(
       keypairIdentity(authorityKeypair),
     ).use(mockStorage());
 
-    const pnft = await metaplex.nfts().create({
-      tokenStandard: TokenStandard.ProgrammableNonFungible,
-      sellerFeeBasisPoints: 500,
-      ruleSet: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
-      uri: "test.com/day",
-      name: "Angry Evening",
-      symbol: "NIGHT",
-      collection: Keypair.generate().publicKey,
-      isCollection: false,
-      creators: [{ address: authorityKeypair.publicKey, share: 100 }],
-    });
+    let pnft: any = null;
+    console.log("creating nft");
+    try {
+      const pnftInner = await metaplex.nfts().create({
+        tokenStandard: TokenStandard.ProgrammableNonFungible,
+        sellerFeeBasisPoints: 500,
+        ruleSet: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
+        uri: "test.com/day",
+        name: "Angry Evening",
+        symbol: "NIGHT",
+        collection: Keypair.generate().publicKey,
+        isCollection: false,
+        creators: [{ address: authorityKeypair.publicKey, share: 100 }],
+      });
 
-    // console.log(pnft);
+      pnft = pnftInner;
+      console.log(pnftInner);
+    } catch (e) {
+      console.log("problem with nft creation");
+      console.log(e);
+    }
     // const nft = await
     const [nightFuryAddress] = findNightFuryAddress(
       pnft.mintAddress,
       authorityKeypair.publicKey,
       program.programId,
     );
+
+    console.log("building init");
     const initializeIx = await program.methods.initialize(
       "test.com/day",
       "test.com/night",
@@ -80,14 +93,19 @@ describe("nightfury", () => {
       systemProgram: SystemProgram.programId,
     }).instruction();
 
-    const tx = new Transaction().add(initializeIx);
-    // const {blockhash, lastValidBlockHeight} = await program.provider.connection.getLatestBlockhash();
+    try {
+      const tx = new Transaction().add(initializeIx);
+      // const {blockhash, lastValidBlockHeight} = await program.provider.connection.getLatestBlockhash();
 
-    const sig = await anchor.getProvider().connection.sendTransaction(tx, [
-      authorityKeypair,
-    ]);
+      console.log("sending init");
+      const sig = await anchor.getProvider().connection.sendTransaction(tx, [
+        authorityKeypair,
+      ]);
 
-    await confirmTransaction(anchor.getProvider().connection, sig);
+      await confirmTransaction(anchor.getProvider().connection, sig);
+    } catch (e) {
+      console.log("problem with intitialize", e);
+    }
 
     const nightFury = await program.account.nightFury.fetch(nightFuryAddress);
 
@@ -103,7 +121,7 @@ describe("nightfury", () => {
         authorizationRulesProgram: mplAuth.PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
-        authRules: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
+        // authRules: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
       }).instruction();
 
       const switchTx = new Transaction().add(switchIx);

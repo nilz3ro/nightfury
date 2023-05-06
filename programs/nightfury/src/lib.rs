@@ -12,8 +12,13 @@ declare_id!("4Wv3EabUK62p1TvavGi67An7JTLBy5sxJ9PAFbLkE1vQ");
 pub mod nightfury {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, day_uri: String, night_uri: String) -> Result<()> {
-        process_initialize(ctx, day_uri, night_uri)
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        thread_id: Vec<u8>,
+        day_uri: String,
+        night_uri: String,
+    ) -> Result<()> {
+        process_initialize(ctx, thread_id, day_uri, night_uri)
     }
 
     pub fn switch(ctx: Context<Switch>) -> Result<()> {

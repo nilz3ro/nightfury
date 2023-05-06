@@ -11,4 +11,6 @@ pub enum NightFuryError {
     FailedToBuildUpdateInstruction,
     #[msg("Invalid Instructions Sysvar Id")]
     InvalidInstructionsSysvarId,
+    #[msg("Invalid Token Metadata Program")]
+    InvalidTokenMetadataProgram,
 }

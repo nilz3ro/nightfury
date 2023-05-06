@@ -7,6 +7,7 @@ pub struct NightFury {
     pub day_uri: String,
     pub night_uri: String,
     pub state: NightFuryState,
+    pub thread: Pubkey,
 }
 
 impl NightFury {
