@@ -1,5 +1,6 @@
 use crate::{errors::NightFuryError, state::NightFuryState};
 use anchor_lang::solana_program::instruction::Instruction;
+use anchor_lang::InstructionData;
 use anchor_lang::{prelude::*, solana_program::native_token::LAMPORTS_PER_SOL};
 use anchor_spl::{token::Mint, token_interface::accessor::authority};
 use clockwork_sdk::{
@@ -35,11 +36,15 @@ pub struct Initialize<'info> {
     pub metadata: UncheckedAccount<'info>,
     #[account(mut)]
     pub authority: Signer<'info>, // accounts for nft
-    #[account(mut, address = Thread::pubkey(nightfury.key(), thread_id))]
+    #[account(mut, address = Thread::pubkey(thread_authority.key(), thread_id))]
     /// CHECK: make sure it's a valid thread
     pub thread: UncheckedAccount<'info>,
     /// CHECK: Make sure this is the real instructions sysvar.
-    #[account(seeds = [
+    #[account(
+       init,
+       space = NightFury::LENGTH,
+       payer = authority, 
+        seeds = [
         b"thread_authority".as_ref(),
         nightfury.key().as_ref(),
     ], bump)]
@@ -90,6 +95,8 @@ pub fn process_initialize(
     let instructions_sysvar = &ctx.accounts.instructions_sysvar;
     let system_program = &ctx.accounts.system_program;
 
+    let nightfury = &ctx.accounts.nightfury;
+
     let switch_instruction = Instruction {
         program_id: crate::id(),
         accounts: crate::accounts::Switch {
@@ -103,7 +110,7 @@ pub fn process_initialize(
             authorization_rules_program: ctx.accounts.authorization_rules_program.key(),
         }
         .to_account_metas(Some(true)),
-        data: crate::instruction::Switch {}.try_to_vec()?,
+        data: crate::instruction::Switch {}.data(),
     };
     // let thread_create_context = ThreadCreate {
 
@@ -119,7 +126,7 @@ pub fn process_initialize(
         CpiContext::new_with_signer(
             thread_program.to_account_info(),
             clockwork_sdk::cpi::ThreadCreate {
-                payer: ctx.accounts.thread_authority.to_account_info(),
+                payer: ctx.accounts.authority.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
                 thread: ctx.accounts.thread.to_account_info(),
                 authority: ctx.accounts.thread_authority.to_owned().to_account_info(),
@@ -137,6 +144,7 @@ pub fn process_initialize(
     )?;
 
     let nightfury = &mut ctx.accounts.nightfury;
+
     nightfury.thread = ctx.accounts.thread.key();
     nightfury.authority = ctx.accounts.authority.key();
     nightfury.mint = ctx.accounts.mint.key();
@@ -144,6 +152,5 @@ pub fn process_initialize(
     nightfury.night_uri = night_uri;
     nightfury.state = NightFuryState::Day;
 
-    // set up clockwork thread
     Ok(())
 }

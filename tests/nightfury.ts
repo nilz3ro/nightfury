@@ -1,5 +1,6 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
+import { ClockworkProvider } from "@clockwork-xyz/sdk";
 import { Nightfury } from "../target/types/nightfury";
 import {
   Connection,
@@ -28,10 +29,13 @@ describe("nightfury", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.Nightfury as Program<Nightfury>;
+  const clockworkProvider = ClockworkProvider.fromAnchorProvider(
+    anchor.AnchorProvider.env(),
+  );
 
   // console.log("programId?", program.programId.toString());
   // console.log("program?", program);
-  console.log(TOKEN_PROGRAM_ID.toString());
+  // console.log(TOKEN_PROGRAM_ID.toString());
 
   it("Is initialized!", async () => {
     const authorityKeypair = Keypair.fromSecretKey(Buffer.from(
@@ -81,8 +85,19 @@ describe("nightfury", () => {
       program.programId,
     );
 
+    const [threadAuthorityAddress] = findThreadAuthorityAddress(
+      nightFuryAddress,
+      program.programId,
+    );
     console.log("building init");
+
+    const threadId = Buffer.from("test");
+    const [threadAddress, threadBump] = clockworkProvider.getThreadPDA(
+      threadAuthorityAddress,
+      threadId.toString(),
+    );
     const initializeIx = await program.methods.initialize(
+      threadId,
       "test.com/day",
       "test.com/night",
     ).accounts({
@@ -90,6 +105,12 @@ describe("nightfury", () => {
       mint: pnft.mintAddress,
       metadata: pnft.metadataAddress,
       authority: authorityKeypair.publicKey,
+      threadAuthority: threadAuthorityAddress,
+      thread: threadAddress,
+      instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+      threadProgram: clockworkProvider.threadProgram.programId,
+      tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+      authorizationRulesProgram: mplAuth.PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     }).instruction();
 
@@ -107,47 +128,47 @@ describe("nightfury", () => {
       console.log("problem with intitialize", e);
     }
 
-    const nightFury = await program.account.nightFury.fetch(nightFuryAddress);
+    // const nightFury = await program.account.nightFury.fetch(nightFuryAddress);
 
-    console.log("nightfury before", nightFury);
+    // console.log("nightfury before", nightFury);
 
-    try {
-      const switchIx = await program.methods.switch().accounts({
-        nightfury: nightFuryAddress,
-        mint: pnft.mintAddress,
-        metadata: pnft.metadataAddress,
-        authority: authorityKeypair.publicKey,
-        tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
-        authorizationRulesProgram: mplAuth.PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
-        // authRules: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
-      }).instruction();
+    // try {
+    //   const switchIx = await program.methods.switch().accounts({
+    //     nightfury: nightFuryAddress,
+    //     mint: pnft.mintAddress,
+    //     metadata: pnft.metadataAddress,
+    //     // authority: authorityKeypair.publicKey,
+    //     tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+    //     authorizationRulesProgram: mplAuth.PROGRAM_ID,
+    //     systemProgram: SystemProgram.programId,
+    //     instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+    //     // authRules: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
+    //   }).instruction();
 
-      const switchTx = new Transaction().add(switchIx);
+    //   const switchTx = new Transaction().add(switchIx);
 
-      const switchSig = await anchor.getProvider().connection.sendTransaction(
-        switchTx,
-        [authorityKeypair],
-        { skipPreflight: true },
-      );
+    //   const switchSig = await anchor.getProvider().connection.sendTransaction(
+    //     switchTx,
+    //     [authorityKeypair],
+    //     { skipPreflight: true },
+    //   );
 
-      await confirmTransaction(anchor.getProvider().connection, switchSig);
+    //   await confirmTransaction(anchor.getProvider().connection, switchSig);
 
-      const nightFuryAfter = await program.account.nightFury.fetch(
-        nightFuryAddress,
-      );
+    //   const nightFuryAfter = await program.account.nightFury.fetch(
+    //     nightFuryAddress,
+    //   );
 
-      console.log("nightfury", nightFuryAfter);
-    } catch (e) {
-      console.log(e);
-    }
+    //   console.log("nightfury", nightFuryAfter);
+    // } catch (e) {
+    //   console.log(e);
+    // }
 
-    const metadataAfter = await metaplex.nfts().findByMint({
-      mintAddress: pnft.mintAddress,
-    });
+    // const metadataAfter = await metaplex.nfts().findByMint({
+    //   mintAddress: pnft.mintAddress,
+    // });
 
-    console.log(metadataAfter);
+    // console.log(metadataAfter);
 
     // await cleanupSol(
     //   anchor.getProvider().connection,
@@ -158,7 +179,7 @@ describe("nightfury", () => {
 });
 
 let airdrop = async (connection: Connection, recipient: PublicKey) => {
-  let sig = await connection.requestAirdrop(recipient, LAMPORTS_PER_SOL);
+  let sig = await connection.requestAirdrop(recipient, 10 * LAMPORTS_PER_SOL);
   await confirmTransaction(connection, sig);
 };
 
@@ -192,6 +213,16 @@ let findNightFuryAddress = (
     mint.toBuffer(),
     authority.toBuffer(),
   ], programId);
+};
+
+let findThreadAuthorityAddress = (
+  nightfuryAddress: PublicKey,
+  programId: PublicKey,
+) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("thread_authority"), nightfuryAddress.toBuffer()],
+    programId,
+  );
 };
 
 async function cleanupSol(

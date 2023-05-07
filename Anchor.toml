@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-nightfury = "4Wv3EabUK62p1TvavGi67An7JTLBy5sxJ9PAFbLkE1vQ"
+nightfury = "A85kZ2k7fFzNSzYH169Cbd6ywE6X4zvNXy9xCLHQ2mvB"
 
 [registry]
 url = "https://api.apr.dev"
