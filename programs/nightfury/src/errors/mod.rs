@@ -13,4 +13,8 @@ pub enum NightFuryError {
     InvalidInstructionsSysvarId,
     #[msg("Invalid Token Metadata Program")]
     InvalidTokenMetadataProgram,
+    #[msg("Invalid Edition Account")]
+    InvalidEditionAccount,
+    #[msg("Invalid Metadata Account")]
+    InvalidMetadataAccount,
 }

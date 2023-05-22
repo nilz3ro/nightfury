@@ -96,6 +96,25 @@ describe("nightfury", () => {
       threadAuthorityAddress,
       threadId.toString(),
     );
+
+    const accounts = {
+      nightfury: nightFuryAddress,
+      mint: pnft.mintAddress,
+      metadata: pnft.metadataAddress,
+      authority: authorityKeypair.publicKey,
+      threadAuthority: threadAuthorityAddress,
+      thread: threadAddress,
+      instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+      threadProgram: clockworkProvider.threadProgram.programId,
+      tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+      authorizationRulesProgram: mplAuth.PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    };
+
+    for (let account in accounts) {
+      console.log(account, accounts[account].toString());
+    }
+
     const initializeIx = await program.methods.initialize(
       threadId,
       "test.com/day",

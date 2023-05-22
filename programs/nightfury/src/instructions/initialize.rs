@@ -2,13 +2,17 @@ use crate::{errors::NightFuryError, state::NightFuryState};
 use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::InstructionData;
 use anchor_lang::{prelude::*, solana_program::native_token::LAMPORTS_PER_SOL};
-use anchor_spl::{token::Mint, token_interface::accessor::authority};
+use anchor_spl::{token::Mint, token::Token, token_interface::accessor::authority};
 use clockwork_sdk::{
     cpi::{thread_create, ThreadCreate},
     state::{Thread, ThreadAccount},
     ThreadProgram,
 };
+use mpl_token_metadata::instruction::builders::DelegateBuilder;
+use mpl_token_metadata::pda::find_metadata_delegate_record_account;
+use mpl_token_metadata::state::{MasterEdition, MasterEditionV2};
 use mpl_token_metadata::{
+    instruction::MetadataDelegateRole,
     state::{Metadata, TokenMetadataAccount},
     // utils::assert_data_valid,
     utils::assert_owned_by,
@@ -34,6 +38,8 @@ pub struct Initialize<'info> {
     pub mint: Account<'info, Mint>,
     /// CHECK: make sure this is a valid metadata account and that it belongs to the mint.
     pub metadata: UncheckedAccount<'info>,
+    /// CHECK: manually check this edition account matches the metadata and mint.
+    pub master_edition: UncheckedAccount<'info>,
     #[account(mut)]
     pub authority: Signer<'info>, // accounts for nft
     #[account(mut, address = Thread::pubkey(thread_authority.key(), thread_id))]
@@ -43,7 +49,7 @@ pub struct Initialize<'info> {
     #[account(
        init,
        space = NightFury::LENGTH,
-       payer = authority, 
+       payer = authority,
         seeds = [
         b"thread_authority".as_ref(),
         nightfury.key().as_ref(),
@@ -52,6 +58,7 @@ pub struct Initialize<'info> {
     /// CHECK: Make sure it's the real instructions sysvar.
     pub instructions_sysvar: UncheckedAccount<'info>,
     pub thread_program: Program<'info, ThreadProgram>,
+    pub token_program: Program<'info, Token>,
     /// CHECK: Make sure this is the real token metadata program.
     pub token_metadata_program: UncheckedAccount<'info>,
     /// CHECK: Make sure this is the real authorization rules program.
@@ -69,6 +76,13 @@ pub fn process_initialize(
 
     assert_owned_by(&ctx.accounts.metadata, &mpl_token_metadata::id())?;
     let metadata = Metadata::from_account_info(&mut ctx.accounts.metadata)?;
+    assert_owned_by(&ctx.accounts.master_edition, &mpl_token_metadata::id())?;
+
+    let master_edition =
+        MasterEditionV2::from_account_info(&ctx.accounts.master_edition).map_err(|_| {
+            msg!("Not master edition v2");
+            NightFuryError::InvalidEditionAccount
+        })?;
 
     require!(
         &ctx.accounts.token_metadata_program.key() == &mpl_token_metadata::id(),
@@ -87,22 +101,37 @@ pub fn process_initialize(
         NightFuryError::UriTooLong
     );
 
+    let authority = &ctx.accounts.authority;
     let mint = &ctx.accounts.mint;
-    let metadata = &ctx.accounts.metadata;
+    let metadata_account = &ctx.accounts.metadata;
+    let master_edition = &ctx.accounts.master_edition;
     let thread = &ctx.accounts.thread.key();
     let thread_program = &ctx.accounts.thread_program;
+    let token_program = &ctx.accounts.token_program;
     let token_metadata_program = &ctx.accounts.token_metadata_program;
     let instructions_sysvar = &ctx.accounts.instructions_sysvar;
     let system_program = &ctx.accounts.system_program;
-
     let nightfury = &ctx.accounts.nightfury;
+
+    let (delegate_record_address, _) = find_metadata_delegate_record_account(
+        &mint.key(),
+        MetadataDelegateRole::Data,
+        &authority.key(),
+        &thread.key(),
+    );
+    let delegate_instruction = DelegateBuilder::new()
+        .delegate(thread.key())
+        .metadata(metadata_account.key())
+        .authority(authority.key())
+        .spl_token_program(token_program.key())
+        .delegate_record(delegate_record_address);
 
     let switch_instruction = Instruction {
         program_id: crate::id(),
         accounts: crate::accounts::Switch {
             nightfury: ctx.accounts.nightfury.key(),
             mint: mint.key(),
-            metadata: metadata.key(),
+            metadata: metadata_account.key(),
             thread: thread.key(),
             token_metadata_program: token_metadata_program.key(),
             system_program: system_program.key(),
