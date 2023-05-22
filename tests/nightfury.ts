@@ -3,6 +3,7 @@ import { Program } from "@project-serum/anchor";
 import { ClockworkProvider } from "@clockwork-xyz/sdk";
 import { Nightfury } from "../target/types/nightfury";
 import {
+  ComputeBudgetProgram,
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
@@ -13,6 +14,8 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import {
+  Metadata,
+  MetadataDelegateRole,
   PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID,
   TokenStandard,
 } from "@metaplex-foundation/mpl-token-metadata";
@@ -100,12 +103,17 @@ describe("nightfury", () => {
       threadId.toString(),
     );
 
-    let delegateRecordAddress = metaplex.nfts().pdas().metadataDelegateRecord({
-      mint: pnft.mintAddress,
-      type: "UpdateV1",
-      updateAuthority: authorityKeypair.publicKey,
-      delegate: threadAddress,
-    });
+    let [delegateRecordAddress] = findDelegateRecordAddress(
+      pnft.mintAddress,
+      threadAddress,
+      authorityKeypair.publicKey,
+    );
+    // let delegateRecordAddress = metaplex.nfts().pdas().metadataDelegateRecord({
+    //   mint: pnft.mintAddress,
+    //   type: "DataItemV1",
+    //   updateAuthority: authorityKeypair.publicKey,
+    //   delegate: threadAddress,
+    // });
 
     const accounts = {
       nightfury: nightFuryAddress,
@@ -128,6 +136,10 @@ describe("nightfury", () => {
     for (let account in accounts) {
       console.log(account, accounts[account].toString());
     }
+
+    const compBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({
+      units: 400_000,
+    });
 
     const initializeIx = await program.methods.initialize(
       threadId,
@@ -152,7 +164,7 @@ describe("nightfury", () => {
     }).instruction();
 
     try {
-      const tx = new Transaction().add(initializeIx);
+      const tx = new Transaction().add(compBudgetIx).add(initializeIx);
       // const {blockhash, lastValidBlockHeight} = await program.provider.connection.getLatestBlockhash();
 
       console.log("sending init");
@@ -276,4 +288,22 @@ async function cleanupSol(
   let transaction = new Transaction().add(transferInstruction);
   let signature = await connection.sendTransaction(transaction, [source]);
   await confirmTransaction(connection, signature);
+}
+
+function findDelegateRecordAddress(
+  mint: PublicKey,
+  delegate: PublicKey,
+  updateAuthority: PublicKey,
+) {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("metadata"),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      mint.toBuffer(),
+      Buffer.from("data_item_delegate"),
+      updateAuthority.toBuffer(),
+      delegate.toBuffer(),
+    ],
+    TOKEN_METADATA_PROGRAM_ID,
+  );
 }

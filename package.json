@@ -6,7 +6,7 @@
     "dependencies": {
         "@clockwork-xyz/sdk": "^0.3.1",
         "@metaplex-foundation/amman": "^0.12.1",
-        "@metaplex-foundation/js": "^0.18.3",
+        "@metaplex-foundation/js": "^0.19.3",
         "@metaplex-foundation/mpl-token-auth-rules": "^1.2.0",
         "@metaplex-foundation/mpl-token-metadata": "^2.10.0",
         "@msgpack/msgpack": "^3.0.0-beta2",

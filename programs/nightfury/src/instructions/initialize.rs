@@ -144,9 +144,14 @@ pub fn process_initialize(
 
     let (delegate_record_address, _) = find_metadata_delegate_record_account(
         &mint.key(),
-        MetadataDelegateRole::Data,
+        MetadataDelegateRole::DataItem,
         &authority.key(),
         &thread.key(),
+    );
+
+    msg!(
+        "role to string: {}",
+        MetadataDelegateRole::DataItem.to_string()
     );
 
     let delegate_args = DelegateArgs::DataItemV1 {
