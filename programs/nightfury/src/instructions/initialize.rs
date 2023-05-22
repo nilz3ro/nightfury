@@ -17,6 +17,7 @@ use mpl_token_metadata::instruction::builders::DelegateBuilder;
 use mpl_token_metadata::instruction::DelegateArgs;
 use mpl_token_metadata::instruction::InstructionBuilder;
 use mpl_token_metadata::pda::find_metadata_delegate_record_account;
+use mpl_token_metadata::processor::AuthorizationData;
 use mpl_token_metadata::state::{MasterEdition, MasterEditionV2};
 use mpl_token_metadata::{
     instruction::MetadataDelegateRole,
@@ -160,6 +161,7 @@ pub fn process_initialize(
     let delegate_instruction = DelegateBuilder::new()
         .delegate(thread.key())
         .metadata(metadata_account.key())
+        .master_edition(ctx.accounts.master_edition.key())
         .authority(authority.key())
         .payer(ctx.accounts.authority.key())
         .mint(ctx.accounts.mint.key())
@@ -223,27 +225,29 @@ pub fn process_initialize(
     let switch_instruction = Instruction {
         program_id: crate::id(),
         accounts: crate::accounts::Switch {
+            auth_rules: ctx.accounts.authorization_rules.key(),
+            token_account: ctx.accounts.token_account.key(),
             nightfury: ctx.accounts.nightfury.key(),
             mint: mint.key(),
+            delegate_record: delegate_record_address,
             metadata: metadata_account.key(),
             thread: thread.key(),
             token_metadata_program: token_metadata_program.key(),
-            system_program: system_program.key(),
             instructions_sysvar: ctx.accounts.instructions_sysvar.key(),
             authorization_rules_program: ctx.accounts.authorization_rules_program.key(),
+            token_program: ctx.accounts.token_program.key(),
+            system_program: system_program.key(),
+            master_edition: ctx.accounts.master_edition.key(),
         }
         .to_account_metas(Some(true)),
         data: crate::instruction::Switch {}.data(),
     };
-    // let thread_create_context = ThreadCreate {
 
-    // 2️⃣ Define a trigger for the thread.
     let trigger = clockwork_sdk::state::Trigger::Cron {
         schedule: "*/10 * * * * * *".into(),
         skippable: true,
     };
 
-    // 3️⃣ Create a Thread via CPI
     let thread_authority_bump = *ctx.bumps.get("thread_authority").unwrap();
     clockwork_sdk::cpi::thread_create(
         CpiContext::new_with_signer(
@@ -260,10 +264,10 @@ pub fn process_initialize(
                 &[thread_authority_bump],
             ]],
         ),
-        LAMPORTS_PER_SOL,                // amount
-        thread_id,                       // id
-        vec![switch_instruction.into()], // instructions
-        trigger,                         // trigger
+        LAMPORTS_PER_SOL,
+        thread_id,
+        vec![switch_instruction.into()],
+        trigger,
     )?;
 
     let nightfury = &mut ctx.accounts.nightfury;

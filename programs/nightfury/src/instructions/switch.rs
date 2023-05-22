@@ -4,7 +4,7 @@ use crate::{errors::NightFuryError, state::NightFuryState};
 use anchor_lang::{
     prelude::*, solana_program::program::invoke, solana_program::sysvar::instructions,
 };
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use clockwork_sdk::state::Thread;
 use mpl_token_metadata::{
@@ -27,26 +27,30 @@ pub struct Switch<'info> {
         ],
         bump
     )]
-    pub nightfury: Account<'info, NightFury>,
+    pub nightfury: Box<Account<'info, NightFury>>,
     // pub token: Account<'info, TokenAccount>,
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     /// CHECK: make sure this is a valid metadata account and that it belongs to the mint.
     #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
-    // #[account(signer, constraint = thread.authority.eq(&nightfury.key()))]
+    pub token_account: Box<Account<'info, TokenAccount>>,
+    /// CHECK: make sure the master edition account matches the mint and metadata accounts.
+    pub master_edition: UncheckedAccount<'info>,
+    /// CHECK: Make sure it's the correct delegate record.
+    pub delegate_record: UncheckedAccount<'info>,
     /// CHECK: make sure it's a valid thread
-    pub thread: UncheckedAccount<'info>,
-    // pub thread: Account<'info, Thread>,
+    #[account(mut)]
+    pub thread: Signer<'info>,
+    /// CHECK: Make sure this account belongs to the auth rules program
+    pub auth_rules: UncheckedAccount<'info>,
+    pub token_program: Program<'info, Token>,
     /// CHECK: Make sure this is the real token metadata program.
     pub token_metadata_program: UncheckedAccount<'info>,
-    pub system_program: Program<'info, System>,
     /// CHECK: Manually check this against the sysvar instruction program id
     pub instructions_sysvar: UncheckedAccount<'info>,
     /// CHECK: Make sure this is the real authorization rules program.
     pub authorization_rules_program: UncheckedAccount<'info>,
-    // CHECK: Make sure this account belongs to the auth rules program
-    // pub auth_rules: UncheckedAccount<'info>,
-    // accounts for nft
+    pub system_program: Program<'info, System>,
 }
 
 pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
@@ -74,9 +78,24 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         NightFuryError::InvalidInstructionsSysvarId
     );
 
-    let update_args = UpdateArgs::V1 {
-        authorization_data: None,
-        new_update_authority: None,
+    // let update_args = UpdateArgs::V1 {
+    //     authorization_data: None,
+    //     new_update_authority: None,
+    //     data: Some(Data {
+    //         uri: match nightfury.state {
+    //             NightFuryState::Day => nightfury.night_uri.clone(),
+    //             NightFuryState::Night => nightfury.day_uri.clone(),
+    //         },
+    //     }),
+    //     primary_sale_happened: None,
+    //     is_mutable: None,
+    //     collection: CollectionToggle::None,
+    //     uses: UsesToggle::None,
+    //     collection_details: CollectionDetailsToggle::None,
+    //     rule_set: RuleSetToggle::None,
+    // };
+
+    let update_args = UpdateArgs::AsDataItemDelegateV2 {
         data: Some(Data {
             uri: match nightfury.state {
                 NightFuryState::Day => nightfury.night_uri.clone(),
@@ -84,20 +103,18 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
             },
             ..metadata.data
         }),
-        primary_sale_happened: None,
-        is_mutable: None,
-        collection: CollectionToggle::None,
-        uses: UsesToggle::None,
-        collection_details: CollectionDetailsToggle::None,
-        rule_set: RuleSetToggle::None,
+        authorization_data: None,
     };
 
     let update_instruction = UpdateBuilder::new()
+        .payer(ctx.accounts.thread.key())
         .authority(ctx.accounts.thread.key())
         .mint(ctx.accounts.mint.key())
+        .token(ctx.accounts.token_account.key())
         .metadata(ctx.accounts.metadata.key())
-        .payer(ctx.accounts.thread.key())
-        // .authorization_rules(ctx.accounts.auth_rules.key())
+        .edition(ctx.accounts.master_edition.key())
+        .authorization_rules(ctx.accounts.auth_rules.key())
+        .authorization_rules_program(ctx.accounts.authorization_rules_program.key())
         .build(update_args)
         .map_err(|e| {
             msg!("{:?}", e);
@@ -110,16 +127,29 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         &update_instruction,
         &[
             ctx.accounts.thread.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.delegate_record.to_account_info(),
+            ctx.accounts.token_account.to_account_info(),
             ctx.accounts.mint.to_account_info(),
             ctx.accounts.metadata.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.master_edition.to_account_info(),
             ctx.accounts.thread.to_account_info(),
             ctx.accounts.system_program.to_account_info(),
             ctx.accounts.instructions_sysvar.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.authorization_rules_program.to_account_info(),
+            ctx.accounts.auth_rules.to_account_info()
+
+
+            // ctx.accounts.thread.to_account_info(),
+            // ctx.accounts.system_program.to_account_info(),
+            // ctx.accounts.system_program.to_account_info(),
+            // ctx.accounts.mint.to_account_info(),
+            // ctx.accounts.metadata.to_account_info(),
+            // ctx.accounts.system_program.to_account_info(),
+            // ctx.accounts.thread.to_account_info(),
+            // ctx.accounts.system_program.to_account_info(),
+            // ctx.accounts.instructions_sysvar.to_account_info(),
+            // ctx.accounts.system_program.to_account_info(),
+            // ctx.accounts.system_program.to_account_info(),
             // ctx.accounts.authorization_rules_program.to_account_info(),
             // ctx.accounts.auth_rules.to_account_info(),
         ],

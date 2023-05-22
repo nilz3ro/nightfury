@@ -163,8 +163,16 @@ describe("nightfury", () => {
       systemProgram: SystemProgram.programId,
     }).instruction();
 
+    const transferIx = SystemProgram.transfer({
+      fromPubkey: authorityKeypair.publicKey,
+      toPubkey: threadAddress,
+      lamports: LAMPORTS_PER_SOL,
+    });
+
     try {
-      const tx = new Transaction().add(compBudgetIx).add(initializeIx);
+      const tx = new Transaction().add(compBudgetIx).add(initializeIx).add(
+        transferIx,
+      );
       // const {blockhash, lastValidBlockHeight} = await program.provider.connection.getLatestBlockhash();
 
       console.log("sending init");
@@ -301,6 +309,7 @@ function findDelegateRecordAddress(
       TOKEN_METADATA_PROGRAM_ID.toBuffer(),
       mint.toBuffer(),
       Buffer.from("data_item_delegate"),
+      // Buffer.from("collection_item_delegate"),
       updateAuthority.toBuffer(),
       delegate.toBuffer(),
     ],
