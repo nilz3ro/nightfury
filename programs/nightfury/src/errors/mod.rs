@@ -17,4 +17,8 @@ pub enum NightFuryError {
     InvalidEditionAccount,
     #[msg("Invalid Metadata Account")]
     InvalidMetadataAccount,
+    #[msg("Invalid Auth Rules Program")]
+    InvalidAuthRulesProgram,
+    #[msg("Invalid Delegate Instruction")]
+    InvalidDelegateInstruction,
 }

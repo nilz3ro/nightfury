@@ -1,14 +1,21 @@
 use crate::{errors::NightFuryError, state::NightFuryState};
 use anchor_lang::solana_program::instruction::Instruction;
+use anchor_lang::solana_program::program::invoke;
 use anchor_lang::InstructionData;
 use anchor_lang::{prelude::*, solana_program::native_token::LAMPORTS_PER_SOL};
-use anchor_spl::{token::Mint, token::Token, token_interface::accessor::authority};
+use anchor_spl::{
+    token::Mint,
+    token::{Token, TokenAccount},
+    token_interface::accessor::authority,
+};
 use clockwork_sdk::{
     cpi::{thread_create, ThreadCreate},
-    state::{Thread, ThreadAccount},
+    state::Thread,
     ThreadProgram,
 };
 use mpl_token_metadata::instruction::builders::DelegateBuilder;
+use mpl_token_metadata::instruction::DelegateArgs;
+use mpl_token_metadata::instruction::InstructionBuilder;
 use mpl_token_metadata::pda::find_metadata_delegate_record_account;
 use mpl_token_metadata::state::{MasterEdition, MasterEditionV2};
 use mpl_token_metadata::{
@@ -34,16 +41,23 @@ pub struct Initialize<'info> {
         ],
         bump
     )]
-    pub nightfury: Account<'info, NightFury>,
-    pub mint: Account<'info, Mint>,
+    pub nightfury: Box<Account<'info, NightFury>>,
+    pub mint: Box<Account<'info, Mint>>,
+    #[account(mut)]
+    pub token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: make sure this is a valid metadata account and that it belongs to the mint.
+    #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
     /// CHECK: manually check this edition account matches the metadata and mint.
+    #[account(mut)]
     pub master_edition: UncheckedAccount<'info>,
     #[account(mut)]
-    pub authority: Signer<'info>, // accounts for nft
-    #[account(mut, address = Thread::pubkey(thread_authority.key(), thread_id))]
+    pub authority: Signer<'info>,
+    /// CHECK: assert derivation and owner of this account.
+    #[account(mut)]
+    pub delegate_record: UncheckedAccount<'info>,
     /// CHECK: make sure it's a valid thread
+    #[account(mut, address = Thread::pubkey(thread_authority.key(), thread_id))]
     pub thread: UncheckedAccount<'info>,
     /// CHECK: Make sure this is the real instructions sysvar.
     #[account(
@@ -54,7 +68,9 @@ pub struct Initialize<'info> {
         b"thread_authority".as_ref(),
         nightfury.key().as_ref(),
     ], bump)]
-    pub thread_authority: Account<'info, NightFury>,
+    pub thread_authority: Box<Account<'info, NightFury>>,
+    /// CHECK: Make sure it's the authorization_rules_program
+    pub authorization_rules: UncheckedAccount<'info>,
     /// CHECK: Make sure it's the real instructions sysvar.
     pub instructions_sysvar: UncheckedAccount<'info>,
     pub thread_program: Program<'info, ThreadProgram>,
@@ -74,10 +90,19 @@ pub fn process_initialize(
 ) -> Result<()> {
     msg!("Initializing NightFury");
 
+    assert_owned_by(
+        &ctx.accounts.authorization_rules,
+        &mpl_token_auth_rules::id(),
+    )?;
+    require!(
+        &ctx.accounts.authorization_rules_program.key() == &mpl_token_auth_rules::ID,
+        NightFuryError::InvalidAuthRulesProgram
+    );
+
     assert_owned_by(&ctx.accounts.metadata, &mpl_token_metadata::id())?;
     let metadata = Metadata::from_account_info(&mut ctx.accounts.metadata)?;
-    assert_owned_by(&ctx.accounts.master_edition, &mpl_token_metadata::id())?;
 
+    assert_owned_by(&ctx.accounts.master_edition, &mpl_token_metadata::id())?;
     let master_edition =
         MasterEditionV2::from_account_info(&ctx.accounts.master_edition).map_err(|_| {
             msg!("Not master edition v2");
@@ -93,6 +118,10 @@ pub fn process_initialize(
         NightFuryError::InvalidMint
     );
     require!(
+        ctx.accounts.mint.key() == ctx.accounts.token_account.mint,
+        NightFuryError::InvalidMint,
+    );
+    require!(
         day_uri.len() <= NightFury::MAX_URI_LENGTH.into(),
         NightFuryError::UriTooLong
     );
@@ -104,14 +133,14 @@ pub fn process_initialize(
     let authority = &ctx.accounts.authority;
     let mint = &ctx.accounts.mint;
     let metadata_account = &ctx.accounts.metadata;
-    let master_edition = &ctx.accounts.master_edition;
+    // let master_edition = &ctx.accounts.master_edition;
     let thread = &ctx.accounts.thread.key();
     let thread_program = &ctx.accounts.thread_program;
     let token_program = &ctx.accounts.token_program;
     let token_metadata_program = &ctx.accounts.token_metadata_program;
-    let instructions_sysvar = &ctx.accounts.instructions_sysvar;
+    // let instructions_sysvar = &ctx.accounts.instructions_sysvar;
     let system_program = &ctx.accounts.system_program;
-    let nightfury = &ctx.accounts.nightfury;
+    // let nightfury = &ctx.accounts.nightfury;
 
     let (delegate_record_address, _) = find_metadata_delegate_record_account(
         &mint.key(),
@@ -119,12 +148,72 @@ pub fn process_initialize(
         &authority.key(),
         &thread.key(),
     );
+
+    let delegate_args = DelegateArgs::DataItemV1 {
+        authorization_data: None,
+    };
     let delegate_instruction = DelegateBuilder::new()
         .delegate(thread.key())
         .metadata(metadata_account.key())
         .authority(authority.key())
+        .payer(ctx.accounts.authority.key())
+        .mint(ctx.accounts.mint.key())
+        .token(ctx.accounts.token_account.key())
         .spl_token_program(token_program.key())
-        .delegate_record(delegate_record_address);
+        .delegate_record(delegate_record_address)
+        .authorization_rules(ctx.accounts.authorization_rules.key())
+        .authorization_rules_program(mpl_token_auth_rules::ID)
+        .system_program(ctx.accounts.system_program.key())
+        .build(delegate_args)
+        .unwrap()
+        .instruction();
+
+    // write a message for each of the following accounts:
+    // ctx.accounts.delegate_record.to_account_info(),
+    // ctx.accounts.thread.to_account_info(),
+    // ctx.accounts.metadata.to_account_info(),
+    // ctx.accounts.master_edition.to_account_info(),
+    // ctx.accounts.mint.to_account_info(),
+    // ctx.accounts.token_account.to_account_info(),
+    // ctx.accounts.authority.to_account_info(),
+    // ctx.accounts.authority.to_account_info(),
+    // ctx.accounts.system_program.to_account_info(),
+    // ctx.accounts.instructions_sysvar.to_account_info(),
+    // ctx.accounts.token_program.to_account_info(),
+    // ctx.accounts.authorization_rules_program.to_account_info(),
+    // ctx.accounts.authorization_rules.to_account_info(),
+
+    msg!("delegate_record_address: {}", delegate_record_address);
+    msg!("thread: {}", ctx.accounts.thread.key());
+    msg!("metadata: {}", ctx.accounts.metadata.key());
+    msg!("master_edition: {}", ctx.accounts.master_edition.key());
+    msg!("mint: {}", ctx.accounts.mint.key());
+    msg!("token_account: {}", ctx.accounts.token_account.key());
+    msg!("authority: {}", ctx.accounts.authority.key());
+    msg!("system_program: {}", ctx.accounts.system_program.key());
+    msg!("token_program: {}", ctx.accounts.token_program.key());
+    msg!("authorization_rules_program: {}", mpl_token_auth_rules::ID);
+    msg!(
+        "authorization_rules: {}",
+        ctx.accounts.authorization_rules.key()
+    );
+
+    let delegate_account_infos = vec![
+        ctx.accounts.delegate_record.to_account_info(),
+        ctx.accounts.thread.to_account_info(),
+        ctx.accounts.metadata.to_account_info(),
+        ctx.accounts.master_edition.to_account_info(),
+        ctx.accounts.mint.to_account_info(),
+        ctx.accounts.token_account.to_account_info(),
+        ctx.accounts.authority.to_account_info(),
+        ctx.accounts.authority.to_account_info(),
+        ctx.accounts.system_program.to_account_info(),
+        ctx.accounts.instructions_sysvar.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.authorization_rules_program.to_account_info(),
+        ctx.accounts.authorization_rules.to_account_info(),
+    ];
+    invoke(&delegate_instruction, delegate_account_infos.as_slice())?;
 
     let switch_instruction = Instruction {
         program_id: crate::id(),

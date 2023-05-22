@@ -59,11 +59,14 @@ describe("nightfury", () => {
 
     let pnft: any = null;
     console.log("creating nft");
+    const rulesetAddress = new PublicKey(
+      "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9",
+    );
     try {
       const pnftInner = await metaplex.nfts().create({
         tokenStandard: TokenStandard.ProgrammableNonFungible,
         sellerFeeBasisPoints: 500,
-        ruleSet: new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"),
+        ruleSet: rulesetAddress,
         uri: "test.com/day",
         name: "Angry Evening",
         symbol: "NIGHT",
@@ -97,13 +100,24 @@ describe("nightfury", () => {
       threadId.toString(),
     );
 
+    let delegateRecordAddress = metaplex.nfts().pdas().metadataDelegateRecord({
+      mint: pnft.mintAddress,
+      type: "UpdateV1",
+      updateAuthority: authorityKeypair.publicKey,
+      delegate: threadAddress,
+    });
+
     const accounts = {
       nightfury: nightFuryAddress,
       mint: pnft.mintAddress,
+      tokenAccount: pnft.tokenAddress,
+      masterEdition: pnft.masterEditionAddress,
+      delegateRecord: delegateRecordAddress,
       metadata: pnft.metadataAddress,
       authority: authorityKeypair.publicKey,
       threadAuthority: threadAuthorityAddress,
       thread: threadAddress,
+      authorizationRules: rulesetAddress,
       instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
       threadProgram: clockworkProvider.threadProgram.programId,
       tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
@@ -122,10 +136,14 @@ describe("nightfury", () => {
     ).accounts({
       nightfury: nightFuryAddress,
       mint: pnft.mintAddress,
+      tokenAccount: pnft.tokenAddress,
+      masterEdition: pnft.masterEditionAddress,
+      delegateRecord: delegateRecordAddress,
       metadata: pnft.metadataAddress,
       authority: authorityKeypair.publicKey,
       threadAuthority: threadAuthorityAddress,
       thread: threadAddress,
+      authorizationRules: rulesetAddress,
       instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
       threadProgram: clockworkProvider.threadProgram.programId,
       tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
