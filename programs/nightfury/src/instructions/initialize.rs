@@ -6,10 +6,8 @@ use anchor_lang::{prelude::*, solana_program::native_token::LAMPORTS_PER_SOL};
 use anchor_spl::{
     token::Mint,
     token::{Token, TokenAccount},
-    token_interface::accessor::authority,
 };
 use clockwork_sdk::{
-    cpi::{thread_create, ThreadCreate},
     state::Thread,
     ThreadProgram,
 };
@@ -18,11 +16,10 @@ use mpl_token_metadata::instruction::DelegateArgs;
 use mpl_token_metadata::instruction::InstructionBuilder;
 use mpl_token_metadata::pda::find_metadata_delegate_record_account;
 use mpl_token_metadata::processor::AuthorizationData;
-use mpl_token_metadata::state::{MasterEdition, MasterEditionV2};
+use mpl_token_metadata::state::{MasterEditionV2};
 use mpl_token_metadata::{
     instruction::MetadataDelegateRole,
     state::{Metadata, TokenMetadataAccount},
-    // utils::assert_data_valid,
     utils::assert_owned_by,
 };
 
@@ -104,11 +101,10 @@ pub fn process_initialize(
     let metadata = Metadata::from_account_info(&mut ctx.accounts.metadata)?;
 
     assert_owned_by(&ctx.accounts.master_edition, &mpl_token_metadata::id())?;
-    let master_edition =
-        MasterEditionV2::from_account_info(&ctx.accounts.master_edition).map_err(|_| {
-            msg!("Not master edition v2");
-            NightFuryError::InvalidEditionAccount
-        })?;
+    MasterEditionV2::from_account_info(&ctx.accounts.master_edition).map_err(|_| {
+        msg!("Not master edition v2");
+        NightFuryError::InvalidEditionAccount
+    })?;
 
     require!(
         &ctx.accounts.token_metadata_program.key() == &mpl_token_metadata::id(),
@@ -175,21 +171,6 @@ pub fn process_initialize(
         .unwrap()
         .instruction();
 
-    // write a message for each of the following accounts:
-    // ctx.accounts.delegate_record.to_account_info(),
-    // ctx.accounts.thread.to_account_info(),
-    // ctx.accounts.metadata.to_account_info(),
-    // ctx.accounts.master_edition.to_account_info(),
-    // ctx.accounts.mint.to_account_info(),
-    // ctx.accounts.token_account.to_account_info(),
-    // ctx.accounts.authority.to_account_info(),
-    // ctx.accounts.authority.to_account_info(),
-    // ctx.accounts.system_program.to_account_info(),
-    // ctx.accounts.instructions_sysvar.to_account_info(),
-    // ctx.accounts.token_program.to_account_info(),
-    // ctx.accounts.authorization_rules_program.to_account_info(),
-    // ctx.accounts.authorization_rules.to_account_info(),
-
     msg!("delegate_record_address: {}", delegate_record_address);
     msg!("thread: {}", ctx.accounts.thread.key());
     msg!("metadata: {}", ctx.accounts.metadata.key());
@@ -244,7 +225,7 @@ pub fn process_initialize(
     };
 
     let trigger = clockwork_sdk::state::Trigger::Cron {
-        schedule: "*/10 * * * * * *".into(),
+        schedule: "*/30 * * * * * *".into(),
         skippable: true,
     };
 

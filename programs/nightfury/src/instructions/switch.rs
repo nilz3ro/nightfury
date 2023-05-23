@@ -10,7 +10,7 @@ use clockwork_sdk::state::Thread;
 use mpl_token_metadata::{
     instruction::{
         builders::UpdateBuilder, CollectionDetailsToggle, CollectionToggle, InstructionBuilder,
-        RuleSetToggle, UpdateArgs, UsesToggle,
+        RuleSetToggle, UpdateArgs
     },
     state::{Data, Metadata, TokenMetadataAccount},
     utils::assert_owned_by,
@@ -78,23 +78,6 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         NightFuryError::InvalidInstructionsSysvarId
     );
 
-    // let update_args = UpdateArgs::V1 {
-    //     authorization_data: None,
-    //     new_update_authority: None,
-    //     data: Some(Data {
-    //         uri: match nightfury.state {
-    //             NightFuryState::Day => nightfury.night_uri.clone(),
-    //             NightFuryState::Night => nightfury.day_uri.clone(),
-    //         },
-    //     }),
-    //     primary_sale_happened: None,
-    //     is_mutable: None,
-    //     collection: CollectionToggle::None,
-    //     uses: UsesToggle::None,
-    //     collection_details: CollectionDetailsToggle::None,
-    //     rule_set: RuleSetToggle::None,
-    // };
-
     let update_args = UpdateArgs::AsDataItemDelegateV2 {
         data: Some(Data {
             uri: match nightfury.state {
@@ -114,6 +97,7 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         .metadata(ctx.accounts.metadata.key())
         .edition(ctx.accounts.master_edition.key())
         .authorization_rules(ctx.accounts.auth_rules.key())
+        .delegate_record(ctx.accounts.delegate_record.key())
         .authorization_rules_program(ctx.accounts.authorization_rules_program.key())
         .build(update_args)
         .map_err(|e| {
@@ -136,22 +120,7 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
             ctx.accounts.system_program.to_account_info(),
             ctx.accounts.instructions_sysvar.to_account_info(),
             ctx.accounts.authorization_rules_program.to_account_info(),
-            ctx.accounts.auth_rules.to_account_info()
-
-
-            // ctx.accounts.thread.to_account_info(),
-            // ctx.accounts.system_program.to_account_info(),
-            // ctx.accounts.system_program.to_account_info(),
-            // ctx.accounts.mint.to_account_info(),
-            // ctx.accounts.metadata.to_account_info(),
-            // ctx.accounts.system_program.to_account_info(),
-            // ctx.accounts.thread.to_account_info(),
-            // ctx.accounts.system_program.to_account_info(),
-            // ctx.accounts.instructions_sysvar.to_account_info(),
-            // ctx.accounts.system_program.to_account_info(),
-            // ctx.accounts.system_program.to_account_info(),
-            // ctx.accounts.authorization_rules_program.to_account_info(),
-            // ctx.accounts.auth_rules.to_account_info(),
+            ctx.accounts.auth_rules.to_account_info(),
         ],
     )?;
 
