@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 
 use instructions::*;
 
-declare_id!("3L6ghU2yzZe8BuBw1assJsL2ckX9HxF2TY4iTjugycQi");
+declare_id!("EQyvFmPDDiYvsfYngQ1LRZcTdpcJc5nfvbMAVmYNRY75");
 
 #[program]
 pub mod nightfury {

@@ -7,16 +7,13 @@ use anchor_spl::{
     token::Mint,
     token::{Token, TokenAccount},
 };
-use clockwork_sdk::{
-    state::Thread,
-    ThreadProgram,
-};
+use clockwork_sdk::{state::Thread, ThreadProgram};
 use mpl_token_metadata::instruction::builders::DelegateBuilder;
 use mpl_token_metadata::instruction::DelegateArgs;
 use mpl_token_metadata::instruction::InstructionBuilder;
 use mpl_token_metadata::pda::find_metadata_delegate_record_account;
 use mpl_token_metadata::processor::AuthorizationData;
-use mpl_token_metadata::state::{MasterEditionV2};
+use mpl_token_metadata::state::MasterEditionV2;
 use mpl_token_metadata::{
     instruction::MetadataDelegateRole,
     state::{Metadata, TokenMetadataAccount},
@@ -207,7 +204,7 @@ pub fn process_initialize(
         program_id: crate::id(),
         accounts: crate::accounts::Switch {
             auth_rules: ctx.accounts.authorization_rules.key(),
-            token_account: ctx.accounts.token_account.key(),
+            // token_account: ctx.accounts.token_account.key(),
             nightfury: ctx.accounts.nightfury.key(),
             mint: mint.key(),
             delegate_record: delegate_record_address,
