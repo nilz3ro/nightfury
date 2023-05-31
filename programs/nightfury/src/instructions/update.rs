@@ -22,12 +22,7 @@ pub struct Update<'info> {
 }
 
 pub fn process_update(ctx: Context<Update>, schedule: String) -> Result<()> {
-    // Terminates the automation.
-    // This instruction should clean up any delegations placed on NFTs.
-    // Delegate metadata update authorization to nightfury account.
     let nightfury = &ctx.accounts.nightfury;
-
-    // Update the thread.
     thread_update(
         CpiContext::new_with_signer(
             ctx.accounts.thread_program.to_account_info(),
@@ -54,15 +49,6 @@ pub fn process_update(ctx: Context<Update>, schedule: String) -> Result<()> {
             }),
         },
     )?;
-
-    // thread_delete(CpiContext::new_with_signer(
-    //     ctx.accounts.thread_program.to_account_info(),
-    //     ThreadDelete {
-    //         authority: ctx.accounts.nightfury.to_account_info(),
-    //         close_to: ctx.accounts.authority.to_account_info(),
-    //         thread: ctx.accounts.thread.to_account_info(),
-    //     },
-    // ))?;
 
     Ok(())
 }
