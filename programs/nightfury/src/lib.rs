@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 
 use instructions::*;
 
-declare_id!("3L6ghU2yzZe8BuBw1assJsL2ckX9HxF2TY4iTjugycQi");
+declare_id!("EQyvFmPDDiYvsfYngQ1LRZcTdpcJc5nfvbMAVmYNRY75");
 
 #[program]
 pub mod nightfury {
@@ -33,6 +33,7 @@ pub mod nightfury {
         process_update_night_uri(ctx, uri)
     }
 
-    // TODO: add an instruction that terminates the automation.
-    // the instruction should also clean up any delegations placed on NFTs.
+    pub fn revoke(ctx: Context<Revoke>) -> Result<()> {
+        process_revoke(ctx)
+    }
 }

@@ -8,11 +8,12 @@ pub struct NightFury {
     pub night_uri: String,
     pub state: NightFuryState,
     pub thread: Pubkey,
+    pub bump: u8,
 }
 
 impl NightFury {
     pub const MAX_URI_LENGTH: u16 = 256;
-    pub const LENGTH: usize = 8 + 32 + 256 + 256 + 3;
+    pub const LENGTH: usize = 8 + 32 + 256 + 256 + 3 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq)]

@@ -7,16 +7,12 @@ use anchor_spl::{
     token::Mint,
     token::{Token, TokenAccount},
 };
-use clockwork_sdk::{
-    state::Thread,
-    ThreadProgram,
-};
+use clockwork_sdk::{state::Thread, ThreadProgram};
 use mpl_token_metadata::instruction::builders::DelegateBuilder;
 use mpl_token_metadata::instruction::DelegateArgs;
 use mpl_token_metadata::instruction::InstructionBuilder;
 use mpl_token_metadata::pda::find_metadata_delegate_record_account;
-use mpl_token_metadata::processor::AuthorizationData;
-use mpl_token_metadata::state::{MasterEditionV2};
+use mpl_token_metadata::state::MasterEditionV2;
 use mpl_token_metadata::{
     instruction::MetadataDelegateRole,
     state::{Metadata, TokenMetadataAccount},
@@ -26,7 +22,7 @@ use mpl_token_metadata::{
 use crate::state::NightFury;
 
 #[derive(Accounts)]
-#[instruction(thread_id: Vec <u8>)]
+#[instruction(thread_id: Vec<u8>)]
 pub struct Initialize<'info> {
     #[account(
         init,
@@ -55,18 +51,8 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub delegate_record: UncheckedAccount<'info>,
     /// CHECK: make sure it's a valid thread
-    #[account(mut, address = Thread::pubkey(thread_authority.key(), thread_id))]
+    #[account(mut, address = Thread::pubkey(nightfury.key(), thread_id))]
     pub thread: UncheckedAccount<'info>,
-    /// CHECK: Make sure this is the real instructions sysvar.
-    #[account(
-       init,
-       space = NightFury::LENGTH,
-       payer = authority,
-        seeds = [
-        b"thread_authority".as_ref(),
-        nightfury.key().as_ref(),
-    ], bump)]
-    pub thread_authority: Box<Account<'info, NightFury>>,
     /// CHECK: Make sure it's the authorization_rules_program
     pub authorization_rules: UncheckedAccount<'info>,
     /// CHECK: Make sure it's the real instructions sysvar.
@@ -130,14 +116,11 @@ pub fn process_initialize(
     let authority = &ctx.accounts.authority;
     let mint = &ctx.accounts.mint;
     let metadata_account = &ctx.accounts.metadata;
-    // let master_edition = &ctx.accounts.master_edition;
     let thread = &ctx.accounts.thread.key();
     let thread_program = &ctx.accounts.thread_program;
     let token_program = &ctx.accounts.token_program;
     let token_metadata_program = &ctx.accounts.token_metadata_program;
-    // let instructions_sysvar = &ctx.accounts.instructions_sysvar;
     let system_program = &ctx.accounts.system_program;
-    // let nightfury = &ctx.accounts.nightfury;
 
     let (delegate_record_address, _) = find_metadata_delegate_record_account(
         &mint.key(),
@@ -150,7 +133,22 @@ pub fn process_initialize(
         "role to string: {}",
         MetadataDelegateRole::DataItem.to_string()
     );
+    msg!("delegate_record_address: {}", delegate_record_address);
+    msg!("thread: {}", ctx.accounts.thread.key());
+    msg!("metadata: {}", ctx.accounts.metadata.key());
+    msg!("master_edition: {}", ctx.accounts.master_edition.key());
+    msg!("mint: {}", ctx.accounts.mint.key());
+    msg!("token_account: {}", ctx.accounts.token_account.key());
+    msg!("authority: {}", ctx.accounts.authority.key());
+    msg!("system_program: {}", ctx.accounts.system_program.key());
+    msg!("token_program: {}", ctx.accounts.token_program.key());
+    msg!("authorization_rules_program: {}", mpl_token_auth_rules::ID);
+    msg!(
+        "authorization_rules: {}",
+        ctx.accounts.authorization_rules.key()
+    );
 
+    // Delegate metadata update authorization to nightfury account.
     let delegate_args = DelegateArgs::DataItemV1 {
         authorization_data: None,
     };
@@ -170,22 +168,6 @@ pub fn process_initialize(
         .build(delegate_args)
         .unwrap()
         .instruction();
-
-    msg!("delegate_record_address: {}", delegate_record_address);
-    msg!("thread: {}", ctx.accounts.thread.key());
-    msg!("metadata: {}", ctx.accounts.metadata.key());
-    msg!("master_edition: {}", ctx.accounts.master_edition.key());
-    msg!("mint: {}", ctx.accounts.mint.key());
-    msg!("token_account: {}", ctx.accounts.token_account.key());
-    msg!("authority: {}", ctx.accounts.authority.key());
-    msg!("system_program: {}", ctx.accounts.system_program.key());
-    msg!("token_program: {}", ctx.accounts.token_program.key());
-    msg!("authorization_rules_program: {}", mpl_token_auth_rules::ID);
-    msg!(
-        "authorization_rules: {}",
-        ctx.accounts.authorization_rules.key()
-    );
-
     let delegate_account_infos = vec![
         ctx.accounts.delegate_record.to_account_info(),
         ctx.accounts.thread.to_account_info(),
@@ -203,11 +185,11 @@ pub fn process_initialize(
     ];
     invoke(&delegate_instruction, delegate_account_infos.as_slice())?;
 
+    // Create target instruction.
     let switch_instruction = Instruction {
         program_id: crate::id(),
         accounts: crate::accounts::Switch {
             auth_rules: ctx.accounts.authorization_rules.key(),
-            token_account: ctx.accounts.token_account.key(),
             nightfury: ctx.accounts.nightfury.key(),
             mint: mint.key(),
             delegate_record: delegate_record_address,
@@ -224,12 +206,12 @@ pub fn process_initialize(
         data: crate::instruction::Switch {}.data(),
     };
 
+    // Create the thread.
     let trigger = clockwork_sdk::state::Trigger::Cron {
         schedule: "*/30 * * * * * *".into(),
         skippable: true,
     };
-
-    let thread_authority_bump = *ctx.bumps.get("thread_authority").unwrap();
+    let nightfury_bump = *ctx.bumps.get("nightfury").unwrap();
     clockwork_sdk::cpi::thread_create(
         CpiContext::new_with_signer(
             thread_program.to_account_info(),
@@ -237,12 +219,13 @@ pub fn process_initialize(
                 payer: ctx.accounts.authority.to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
                 thread: ctx.accounts.thread.to_account_info(),
-                authority: ctx.accounts.thread_authority.to_owned().to_account_info(),
+                authority: ctx.accounts.nightfury.to_owned().to_account_info(),
             },
             &[&[
-                b"thread_authority".as_ref(),
-                ctx.accounts.nightfury.key().as_ref(),
-                &[thread_authority_bump],
+                b"nightfury".as_ref(),
+                ctx.accounts.mint.key().as_ref(),
+                ctx.accounts.authority.key().as_ref(),
+                &[nightfury_bump],
             ]],
         ),
         LAMPORTS_PER_SOL,
@@ -251,14 +234,15 @@ pub fn process_initialize(
         trigger,
     )?;
 
+    // Initialize nightfury account.
     let nightfury = &mut ctx.accounts.nightfury;
-
     nightfury.thread = ctx.accounts.thread.key();
     nightfury.authority = ctx.accounts.authority.key();
     nightfury.mint = ctx.accounts.mint.key();
     nightfury.day_uri = day_uri;
     nightfury.night_uri = night_uri;
     nightfury.state = NightFuryState::Day;
+    nightfury.bump = nightfury_bump;
 
     Ok(())
 }

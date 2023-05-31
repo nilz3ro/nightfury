@@ -1,20 +1,15 @@
-use crate::state::NightFury;
-use crate::{errors::NightFuryError, state::NightFuryState};
-
 use anchor_lang::{
     prelude::*, solana_program::program::invoke, solana_program::sysvar::instructions,
 };
-use anchor_spl::token::{Mint, Token, TokenAccount};
-
-use clockwork_sdk::state::Thread;
+use anchor_spl::token::{Mint, Token};
 use mpl_token_metadata::{
-    instruction::{
-        builders::UpdateBuilder, CollectionDetailsToggle, CollectionToggle, InstructionBuilder,
-        RuleSetToggle, UpdateArgs
-    },
+    instruction::{builders::UpdateBuilder, InstructionBuilder, UpdateArgs},
     state::{Data, Metadata, TokenMetadataAccount},
     utils::assert_owned_by,
 };
+
+use crate::state::NightFury;
+use crate::{errors::NightFuryError, state::NightFuryState};
 
 #[derive(Accounts)]
 pub struct Switch<'info> {
@@ -33,7 +28,7 @@ pub struct Switch<'info> {
     /// CHECK: make sure this is a valid metadata account and that it belongs to the mint.
     #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
-    pub token_account: Box<Account<'info, TokenAccount>>,
+    // pub token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: make sure the master edition account matches the mint and metadata accounts.
     pub master_edition: UncheckedAccount<'info>,
     /// CHECK: Make sure it's the correct delegate record.
@@ -93,7 +88,7 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         .payer(ctx.accounts.thread.key())
         .authority(ctx.accounts.thread.key())
         .mint(ctx.accounts.mint.key())
-        .token(ctx.accounts.token_account.key())
+        // .token(ctx.accounts.token_account.key())
         .metadata(ctx.accounts.metadata.key())
         .edition(ctx.accounts.master_edition.key())
         .authorization_rules(ctx.accounts.auth_rules.key())
@@ -112,7 +107,7 @@ pub fn process_switch(ctx: Context<Switch>) -> Result<()> {
         &[
             ctx.accounts.thread.to_account_info(),
             ctx.accounts.delegate_record.to_account_info(),
-            ctx.accounts.token_account.to_account_info(),
+            // ctx.accounts.token_account.to_account_info(),
             ctx.accounts.mint.to_account_info(),
             ctx.accounts.metadata.to_account_info(),
             ctx.accounts.master_edition.to_account_info(),
