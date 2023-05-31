@@ -36,4 +36,8 @@ pub mod nightfury {
     pub fn revoke(ctx: Context<Revoke>) -> Result<()> {
         process_revoke(ctx)
     }
+
+    pub fn update(ctx: Context<Update>, schedule: String) -> Result<()> {
+        process_update(ctx, schedule)
+    }
 }
