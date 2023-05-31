@@ -1,20 +1,15 @@
-use crate::state::NightFury;
-use crate::{errors::NightFuryError, state::NightFuryState};
-
 use anchor_lang::{
     prelude::*, solana_program::program::invoke, solana_program::sysvar::instructions,
 };
-use anchor_spl::token::{Mint, Token, TokenAccount};
-
-use clockwork_sdk::state::Thread;
+use anchor_spl::token::{Mint, Token};
 use mpl_token_metadata::{
-    instruction::{
-        builders::UpdateBuilder, CollectionDetailsToggle, CollectionToggle, InstructionBuilder,
-        RuleSetToggle, UpdateArgs,
-    },
+    instruction::{builders::UpdateBuilder, InstructionBuilder, UpdateArgs},
     state::{Data, Metadata, TokenMetadataAccount},
     utils::assert_owned_by,
 };
+
+use crate::state::NightFury;
+use crate::{errors::NightFuryError, state::NightFuryState};
 
 #[derive(Accounts)]
 pub struct Switch<'info> {

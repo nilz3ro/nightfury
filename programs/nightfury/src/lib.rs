@@ -33,6 +33,7 @@ pub mod nightfury {
         process_update_night_uri(ctx, uri)
     }
 
-    // TODO: add an instruction that terminates the automation.
-    // the instruction should also clean up any delegations placed on NFTs.
+    pub fn revoke(ctx: Context<Revoke>) -> Result<()> {
+        process_revoke(ctx)
+    }
 }
