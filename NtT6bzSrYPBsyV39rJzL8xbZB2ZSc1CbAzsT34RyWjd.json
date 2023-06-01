@@ -1,0 +1,38 @@
+{
+  "key": "MetadataV1",
+  "update_authority": "FP8jCPjyzQeH5bybDKsU5zifaUyZPmjSa1j94nHgewKv",
+  "mint": "NtT6bzSrYPBsyV39rJzL8xbZB2ZSc1CbAzsT34RyWjd",
+  "data": {
+    "name": "Pixel Puffs: Experiments #1\u0000\u0000\u0000\u0000\u0000",
+    "symbol": "PUFFS\u0000\u0000\u0000\u0000\u0000",
+    "uri": "https://green-implicit-heron-792.mypinata.cloud/ipfs/Qmd9J6GfYYnzjUfLCjD7Pbv1ysCTaHr42yxsF44msE8qk7\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+    "seller_fee_basis_points": 500,
+    "creators": [
+      {
+        "address": "88mtdG8GXtiQU5p6MPeCSDLsUnEWw4CaDHcvDuCcGFT",
+        "verified": true,
+        "share": 0
+      },
+      {
+        "address": "HbeVrCDqo2bGH7MyZnvbAFXoicunEMyUcPzfvrDt5Qgf",
+        "verified": false,
+        "share": 100
+      }
+    ]
+  },
+  "primary_sale_happened": true,
+  "is_mutable": true,
+  "edition_nonce": 255,
+  "token_standard": "ProgrammableNonFungible",
+  "collection": {
+    "verified": true,
+    "key": "9CybVjgeC5x647M2tAwd1VYcstEL11KuixDNrK3phGYj"
+  },
+  "uses": null,
+  "collection_details": null,
+  "programmable_config": {
+    "V1": {
+      "rule_set": "eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+    }
+  }
+}

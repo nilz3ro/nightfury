@@ -25,7 +25,7 @@ use crate::state::NightFury;
 #[instruction(thread_id: Vec<u8>)]
 pub struct Initialize<'info> {
     #[account(
-        init,
+        init_if_needed,
         space = NightFury::LENGTH,
         payer = authority,
         seeds = [
