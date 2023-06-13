@@ -35,6 +35,7 @@ pub fn process_update(ctx: Context<Update>, schedule: String) -> Result<()> {
                 b"nightfury".as_ref(),
                 ctx.accounts.mint.key().as_ref(),
                 ctx.accounts.authority.key().as_ref(),
+                ctx.accounts.nightfury.thread_id.as_ref(),
                 &[nightfury.bump],
             ]],
         ),

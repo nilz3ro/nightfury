@@ -114,6 +114,7 @@ pub fn process_revoke(ctx: Context<Revoke>) -> Result<()> {
             b"nightfury".as_ref(),
             ctx.accounts.mint.key().as_ref(),
             ctx.accounts.authority.key().as_ref(),
+            ctx.accounts.nightfury.thread_id.as_ref(),
             &[nightfury.bump],
         ]],
     ))?;

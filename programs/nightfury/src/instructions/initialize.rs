@@ -31,7 +31,8 @@ pub struct Initialize<'info> {
         seeds = [
             b"nightfury".as_ref(),
             mint.key().as_ref(),
-            authority.key().as_ref()
+            authority.key().as_ref(),
+            thread_id.clone().as_ref()
         ],
         bump
     )]
@@ -129,25 +130,6 @@ pub fn process_initialize(
         &thread.key(),
     );
 
-    msg!(
-        "role to string: {}",
-        MetadataDelegateRole::DataItem.to_string()
-    );
-    msg!("delegate_record_address: {}", delegate_record_address);
-    msg!("thread: {}", ctx.accounts.thread.key());
-    msg!("metadata: {}", ctx.accounts.metadata.key());
-    msg!("master_edition: {}", ctx.accounts.master_edition.key());
-    msg!("mint: {}", ctx.accounts.mint.key());
-    msg!("token_account: {}", ctx.accounts.token_account.key());
-    msg!("authority: {}", ctx.accounts.authority.key());
-    msg!("system_program: {}", ctx.accounts.system_program.key());
-    msg!("token_program: {}", ctx.accounts.token_program.key());
-    msg!("authorization_rules_program: {}", mpl_token_auth_rules::ID);
-    msg!(
-        "authorization_rules: {}",
-        ctx.accounts.authorization_rules.key()
-    );
-
     // Delegate metadata update authorization to nightfury account.
     let delegate_args = DelegateArgs::DataItemV1 {
         authorization_data: None,
@@ -208,7 +190,8 @@ pub fn process_initialize(
 
     // Create the thread.
     let trigger = clockwork_sdk::state::Trigger::Cron {
-        schedule: "*/30 * * * * * *".into(),
+        // schedule: "*/30 * * * * * *".into(),
+        schedule: "00 00 */12 * * * *".into(),
         skippable: true,
     };
     let nightfury_bump = *ctx.bumps.get("nightfury").unwrap();
@@ -225,11 +208,12 @@ pub fn process_initialize(
                 b"nightfury".as_ref(),
                 ctx.accounts.mint.key().as_ref(),
                 ctx.accounts.authority.key().as_ref(),
+                thread_id.clone().as_ref(),
                 &[nightfury_bump],
             ]],
         ),
         LAMPORTS_PER_SOL,
-        thread_id,
+        thread_id.clone(),
         vec![switch_instruction.into()],
         trigger,
     )?;
@@ -242,6 +226,7 @@ pub fn process_initialize(
     nightfury.day_uri = day_uri;
     nightfury.night_uri = night_uri;
     nightfury.state = NightFuryState::Day;
+    nightfury.thread_id = thread_id;
     nightfury.bump = nightfury_bump;
 
     Ok(())

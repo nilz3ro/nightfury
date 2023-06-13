@@ -8,6 +8,7 @@ pub struct NightFury {
     pub night_uri: String,
     pub state: NightFuryState,
     pub thread: Pubkey,
+    pub thread_id: Vec<u8>,
     pub bump: u8,
 }
 
